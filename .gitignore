@@ -1,0 +1,29 @@
+# Змінні оточення та секрети
+.env
+*.env.local
+
+# Тимчасові файли та віртуальні оточення Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+env/
+venv/
+ENV/
+.pytest_cache/
+
+# Локальні дані n8n та PostgreSQL (якщо монтуються локально)
+.n8n/
+postgres_data/
+n8n_data/
+
+# Файли операційної системи та IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Згенеровані звіти
+/reports

@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AccessRequestTriageResponse",
+  "description": "Структурована відповідь від парсера Google AI Studio (Gemini) для повідомлень із запитами доступу зі Slack",
+  "type": "object",
+  "required": [
+    "is_access_request",
+    "classification",
+    "requests"
+  ],
+  "properties": {
+    "is_access_request": {
+      "type": "boolean",
+      "description": "True, якщо повідомлення містить один або декілька запитів на доступ до систем чи інфраструктури"
+    },
+    "classification": {
+      "type": "string",
+      "enum": [
+        "access_request",
+        "not_request",
+        "thread_supplement",
+        "ambiguous"
+      ],
+      "description": "Високорівнева класифікація вхідного повідомлення"
+    },
+    "thread_context_applied": {
+      "type": "boolean",
+      "description": "True, якщо для заповнення полів було використано контекст попередніх повідомлень треду"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Короткий підсумок (1 речення) того, про що просить користувач"
+    },
+    "requests": {
+      "type": "array",
+      "description": "Список окремих заявок на доступ, витягнутих із повідомлення (може бути 0 для not_request, 1 або декілька)",
+      "items": {
+        "type": "object",
+        "required": [
+          "target_user",
+          "resource",
+          "environment",
+          "access_level",
+          "is_complete",
+          "missing_fields",
+          "risk_flags"
+        ],
+        "properties": {
+          "target_user": {
+            "type": "string",
+            "description": "Користувач, якому потрібен доступ (наприклад, '@john', 'myself' або ім'я/email колеги)"
+          },
+          "resource": {
+            "type": "string",
+            "description": "Конкретний компонент інфраструктури, база даних, інструмент або сервіс (наприклад, 'PostgreSQL', 'AWS S3', 'K8s cluster', 'GitHub repo')"
+          },
+          "environment": {
+            "type": "string",
+            "enum": [
+              "production",
+              "staging",
+              "dev",
+              "sandbox",
+              "unknown"
+            ],
+            "description": "Цільове середовище інфраструктури"
+          },
+          "access_level": {
+            "type": "string",
+            "enum": [
+              "read",
+              "write",
+              "admin",
+              "unknown"
+            ],
+            "description": "Запитуваний рівень прав доступу"
+          },
+          "justification": {
+            "type": ["string", "null"],
+            "description": "Зазначена бізнес-причина, номер тікета або інциденту (null, якщо не вказано)"
+          },
+          "duration": {
+            "type": ["string", "null"],
+            "description": "Бажаний термін дії доступу (наприклад, '3 days', '2 hours', 'permanent', null якщо пропущено)"
+          },
+          "is_complete": {
+            "type": "boolean",
+            "description": "True, якщо всі обов'язкові поля (resource, environment, access_level, duration, justification) достатньо зрозумілі"
+          },
+          "missing_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "target_user",
+                "resource",
+                "environment",
+                "access_level",
+                "duration",
+                "justification"
+              ]
+            },
+            "description": "Список обов'язкових полів, яких бракує та які потрібно уточнити"
+          },
+          "clarification_question": {
+            "type": ["string", "null"],
+            "description": "РІВНО ОДНЕ ввічливе цільове запитання до автора для отримання пропущеної інформації (null, якщо заявка повна)"
+          },
+          "risk_flags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Виявлені ознаки ризику, наприклад: 'production_environment', 'admin_privileges', 'prod_db_access', 'prompt_injection_attempt'"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

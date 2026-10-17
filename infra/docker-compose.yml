@@ -1,0 +1,81 @@
+version: "3.9"
+
+# =============================================================
+# Інфраструктура сервісу обробки заявок TechOps
+# Стек: PostgreSQL 16 + self-hosted n8n
+# =============================================================
+
+services:
+  # ── PostgreSQL: Сховище даних (повідомлення, заявки, прогони, аудит) ──
+  postgres:
+    image: postgres:16-alpine
+    container_name: techops-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-techops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-techops_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-access_requests}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../sql:/docker-entrypoint-initdb.d:ro    # Автоматичне виконання 001_init.sql при першому старті
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-techops} -d ${POSTGRES_DB:-access_requests}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - techops-network
+
+  # ── n8n: Оркестратор воркфлоу та обробник заявок ──
+  n8n:
+    build:
+      context: .
+      dockerfile: Dockerfile.n8n
+    container_name: techops-n8n
+    restart: unless-stopped
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    environment:
+      # Загальні налаштування n8n
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://localhost:5678/}
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-Europe/Kyiv}
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_PERSONALIZATION_ENABLED=false
+
+      # Дозвіл можливостей Code-вузлів (регулярні вирази, утиліти, стандартні бібліотеки)
+      - NODE_FUNCTION_ALLOW_BUILTIN=*
+      - NODE_FUNCTION_ALLOW_EXTERNAL=*
+
+      # Облікові дані Google AI Studio для Gemini
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.1-flash-lite}
+
+      # Параметри підключення до PostgreSQL для вузла n8n Postgres
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${POSTGRES_DB:-access_requests}
+      - DB_POSTGRESDB_USER=${POSTGRES_USER:-techops}
+      - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD:-techops_secret}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ../workflows:/data/workflows:ro          # Дозволяє легко імпортувати воркфлоу
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - techops-network
+
+networks:
+  techops-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: techops_postgres_data
+  n8n_data:
+    name: techops_n8n_data

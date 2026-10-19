@@ -539,3 +539,16 @@ TEST_TASK/
 ├── requirements.txt                    # Залежності Python (pytest, jsonschema, psycopg тощо)
 └── README.md                           # Основна документація проекту
 ```
+
+---
+
+## 📄 Ліцензія (License)
+
+Цей проєкт поширюється на умовах вільної ліцензії **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+
+> **Copyright (C) 2026 Віталій Струтинський**
+>
+> This program is free software: you can redistribute it and/or modify it under the terms of the **GNU Affero General Public License** as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+>
+> Повний текст умов ліцензії наведено у файлі [LICENSE](LICENSE) або за посиланням [https://www.gnu.org/licenses/](https://www.gnu.org/licenses/).
+> Для питань комерційного ліцензування звертайтеся до автора.

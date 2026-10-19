@@ -206,7 +206,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "={{ ($json.is_not_request || $json.is_slack_challenge) ? 'SELECT 1;' : 'INSERT INTO access_requests (\n  source_message_id,\n  target_user,\n  resource,\n  environment,\n  access_level,\n  justification,\n  duration,\n  status,\n  route,\n  missing_fields,\n  clarification_question,\n  risk_flags,\n  extracted_data\n) VALUES (\n  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12::jsonb, $13::jsonb\n);' }}",
+        "query": "={{ ($json.is_not_request || $json.is_slack_challenge) ? 'SELECT 1;' : `INSERT INTO access_requests (\n  source_message_id,\n  target_user,\n  resource,\n  environment,\n  access_level,\n  justification,\n  duration,\n  status,\n  route,\n  missing_fields,\n  clarification_question,\n  risk_flags,\n  extracted_data\n) VALUES (\n  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12::jsonb, $13::jsonb\n);` }}",
         "options": {
           "queryReplacement": "={{ ($json.is_not_request || $json.is_slack_challenge) ? [] : [$json.source_message_id, $json.target_user, $json.resource, $json.environment, $json.access_level, $json.justification, $json.duration, $json.status, $json.route, $json.missing_fields, $json.clarification_question, $json.risk_flags, $json.extracted_data] }}"
         }

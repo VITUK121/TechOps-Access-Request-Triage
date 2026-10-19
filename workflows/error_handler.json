@@ -1,0 +1,127 @@
+{
+  "name": "TechOps - Error Handler and Alerting",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "node-error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Вилучення структурованих деталей помилки з контексту виконання n8n\nconst errorData = $input.first().json;\n\nconst executionId = errorData.execution?.id || 'unknown_exec';\nconst workflowName = errorData.workflow?.name || 'unknown_workflow';\nconst lastNodeExecuted = errorData.execution?.lastNodeExecuted || 'unknown_node';\nconst errorMessage = errorData.execution?.error?.message || 'Unknown execution failure';\nconst errorStack = errorData.execution?.error?.stack || '';\n\n// Спроба отримати source_message_id із вхідних даних, якщо він доступний\nlet sourceMessageId = 'unknown_msg';\ntry {\n  const runData = errorData.execution?.data?.resultData?.runData || {};\n  for (const nodeKey of Object.keys(runData)) {\n    const nodeItems = runData[nodeKey]?.[0]?.data?.main?.[0] || [];\n    if (nodeItems.length > 0 && nodeItems[0].json?.source_message_id) {\n      sourceMessageId = nodeItems[0].json.source_message_id;\n      break;\n    }\n  }\n} catch (e) {\n  // ігнорування помилки інспекції даних\n}\n\nreturn [{\n  json: {\n    source_message_id: sourceMessageId,\n    execution_id: executionId,\n    workflow_name: workflowName,\n    failed_node: lastNodeExecuted,\n    error_message: errorMessage,\n    error_type: 'processing_error',\n    error_stack: errorStack,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "node-extract-error",
+      "name": "Extract Error Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO processing_runs (\n  source_message_id,\n  model_id,\n  schema_valid,\n  error_type,\n  latency_ms,\n  input_tokens,\n  output_tokens,\n  estimated_cost_usd\n) VALUES (\n  $1, 'error_handler', false, $2, 0, 0, 0, 0.0\n)\nON CONFLICT DO NOTHING;",
+        "options": {
+          "queryReplacement": "={{ [$json.source_message_id, $json.error_message] }}"
+        }
+      },
+      "id": "node-db-log-error",
+      "name": "DB: Record Failure in processing_runs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        680,
+        300
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE messages\nSET processing_status = 'processing_error'\nWHERE source_message_id = $1;",
+        "options": {
+          "queryReplacement": "={{ [$json.source_message_id] }}"
+        }
+      },
+      "id": "node-db-update-message-status",
+      "name": "DB: Mark Message processing_error",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        900,
+        300
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Підготовка корисного навантаження сповіщення для чергової команди DevOps On-Call\nconst item = $('Extract Error Context').first().json;\n\nconst alertPayload = {\n  channel: '#techops-alerts',\n  text: '🚨 *Pipeline Processing Error* in ' + (item.workflow_name || 'workflow'),\n  blocks: [\n    {\n      type: 'header',\n      text: {\n        type: 'plain_text',\n        text: '🚨 TechOps Triage Pipeline Failure'\n      }\n    },\n    {\n      type: 'section',\n      fields: [\n        { type: 'mrkdwn', text: '*Execution ID:* ' + item.execution_id },\n        { type: 'mrkdwn', text: '*Failed Node:* ' + item.failed_node },\n        { type: 'mrkdwn', text: '*Message ID:* ' + item.source_message_id },\n        { type: 'mrkdwn', text: '*Time:* ' + item.timestamp }\n      ]\n    },\n    {\n      type: 'section',\n      text: {\n        type: 'mrkdwn',\n        text: '*Error:* ' + item.error_message\n      }\n    }\n  ]\n};\n\nreturn [{ json: alertPayload }];"
+      },
+      "id": "node-format-alert",
+      "name": "Format TechOps Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Error Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Error Context": {
+      "main": [
+        [
+          {
+            "node": "DB: Record Failure in processing_runs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DB: Record Failure in processing_runs": {
+      "main": [
+        [
+          {
+            "node": "DB: Mark Message processing_error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DB: Mark Message processing_error": {
+      "main": [
+        [
+          {
+            "node": "Format TechOps Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -202,10 +202,10 @@ def simulate_from_golden_dataset() -> Tuple[Dict[str, Any], List[Dict[str, Any]]
         requests = llm.get("requests", [])
         routes = item.get("expected_routing", [])
 
-        # Оцінка токенів та вартості
+        # Оцінка токенів та вартості згідно з тарифами gemini-3.1-flash-lite у README.md ($0.25 in / $1.50 out за 1M)
         in_tok = len(item["input"]["message_text"].split()) * 2 + 300
         out_tok = len(json.dumps(llm).split())
-        cost = (in_tok * 0.075 + out_tok * 0.30) / 1_000_000.0
+        cost = (in_tok * 0.25 + out_tok * 1.50) / 1_000_000.0
         total_cost += cost
 
         for idx, req in enumerate(requests):

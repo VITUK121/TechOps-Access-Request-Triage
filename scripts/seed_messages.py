@@ -230,7 +230,8 @@ def seed_via_postgres(dataset: List[Dict[str, Any]]) -> Dict[str, int]:
                     # 3. Вставка в таблицю processing_runs
                     tokens_in = len(inp["message_text"].split()) * 2 + 300
                     tokens_out = len(json.dumps(llm).split())
-                    cost_usd = (tokens_in * 0.075 + tokens_out * 0.30) / 1_000_000.0
+                    # Тариф gemini-3.1-flash-lite з README ($0.25 in / $1.50 out за 1M)
+                    cost_usd = (tokens_in * 0.25 + tokens_out * 1.50) / 1_000_000.0
 
                     cur.execute(
                         """

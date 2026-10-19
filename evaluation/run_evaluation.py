@@ -63,10 +63,24 @@ SCHEMA_PATH = BASE_DIR / "schemas" / "access_request.schema.json"
 PROMPT_PATH = BASE_DIR / "prompts" / "exctraction.md"
 RESULTS_DIR = BASE_DIR / "evaluation" / "results"
 
-# Тарифи Gemini для gemini-3.1-flash-lite / flash ($ за 1 млн токенів)
-# Згідно з Розділом 12 README
-INPUT_PRICE_PER_MILLION = 0.075
-OUTPUT_PRICE_PER_MILLION = 0.30
+# Тарифи Google AI Studio для моделей Gemini ($ за 1 млн токенів)
+# Згідно з оновленим розділом токеноміки README.md:
+GEMINI_PRICING = {
+    "gemini-3.1-flash-lite": {
+        "input_price_per_million": 0.25,
+        "output_price_per_million": 1.50,
+    },
+    "gemini-3.5-flash-lite": {
+        "input_price_per_million": 0.30,
+        "output_price_per_million": 2.50,
+    },
+}
+
+DEFAULT_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
+_active_pricing = GEMINI_PRICING.get(DEFAULT_MODEL, GEMINI_PRICING["gemini-3.1-flash-lite"])
+INPUT_PRICE_PER_MILLION = _active_pricing["input_price_per_million"]
+OUTPUT_PRICE_PER_MILLION = _active_pricing["output_price_per_million"]
+
 
 # Кольори для терміналу
 GREEN = "\033[92m"

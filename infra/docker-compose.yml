@@ -28,34 +28,36 @@ services:
     networks:
       - techops-network
 
-  # ── n8n: Оркестратор воркфлоу та обробник заявок ──
+  # ── n8n-import: Одноразовий імпорт воркфлоу ──
+  n8n-import:
+    image: docker.n8n.io/n8nio/n8n:v3-nightly-20261017-pc
+    container_name: techops-n8n-import
+    restart: "no"
+    command: ["import:workflow", "--separate", "--input=/data/workflows"]
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ../workflows:/data/workflows:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - techops-network
+
+  # ── 2. Основний сервер n8n (стартує ПІСЛЯ завершення імпорту) ──
   n8n:
-    build:
-      context: .
-      dockerfile: Dockerfile.n8n
+    image: docker.n8n.io/n8nio/n8n:v3-nightly-20261017-pc
     container_name: techops-n8n
     restart: unless-stopped
     ports:
       - "${N8N_PORT:-5678}:5678"
     environment:
-      # Загальні налаштування n8n
       - N8N_HOST=0.0.0.0
       - N8N_PORT=5678
       - N8N_PROTOCOL=http
       - WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://localhost:5678/}
       - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-Europe/Kyiv}
-      - N8N_DIAGNOSTICS_ENABLED=false
-      - N8N_PERSONALIZATION_ENABLED=false
-
-      # Дозвіл можливостей Code-вузлів (регулярні вирази, утиліти, стандартні бібліотеки)
-      - NODE_FUNCTION_ALLOW_BUILTIN=*
-      - NODE_FUNCTION_ALLOW_EXTERNAL=*
-
-      # Облікові дані Google AI Studio для Gemini
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.1-flash-lite}
-
-      # Параметри підключення до PostgreSQL для вузла n8n Postgres
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PORT=5432
       - DB_POSTGRESDB_DATABASE=${POSTGRES_DB:-access_requests}
@@ -63,10 +65,11 @@ services:
       - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD:-techops_secret}
     volumes:
       - n8n_data:/home/node/.n8n
-      - ../workflows:/data/workflows:ro          # Дозволяє легко імпортувати воркфлоу
     depends_on:
       postgres:
         condition: service_healthy
+      n8n-import:
+        condition: service_completed_successfully
     networks:
       - techops-network
 
